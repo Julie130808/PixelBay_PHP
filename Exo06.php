@@ -4,17 +4,17 @@ $nomJeu = "Cyber Race";
 $pourcentage = 15;
 
 function promotionEte ($prixJeu){
-    $promoEte = $prixJeu -= ($prixJeu/100)*20;
+    $promoEte = $prixJeu - ($prixJeu/100)*20;
     return $promoEte;
 }
 
 function promotionHiver ($prixJeu){
-    $promoHiver = $prixJeu -= ($prixJeu/100)*30;
+    $promoHiver = $prixJeu - ($prixJeu/100)*30;
     return $promoHiver;
 }
 
 function promotionSpeciale ($prixJeu, $pourcentage){
-    $promoSpeciale = $prixJeu -= ($prixJeu/100)*$pourcentage;
+    $promoSpeciale = $prixJeu - ($prixJeu/100)*$pourcentage;
     return $promoSpeciale;
 }
 

@@ -4,129 +4,110 @@ require_once 'config.php';
 
 $erreurs = [];
 $succes = false;
-$nom = '';
-$email = '';
-$motdepasse = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Récupération et nettoyage
+    $prenom = trim($_POST['prenom'] ?? '');
     $nom = trim($_POST['nom'] ?? '');
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
-    $motdepasse = trim($_POST['motdepasse'] ?? '');
-    $motdepasse_confirm = trim($_POST['motdepasse_confirm'] ?? '');
+    $mdp = $_POST['mdp'] ?? '';
+    $mdpConfirm = $_POST['mdp_confirm'] ?? '';
 
     // Validation
-    if (empty($nom) || strlen($nom) < 2 || strlen($nom) > 50) {
-        $erreurs[] = "Le nom doit contenir entre 2 et 50 caractères.";
+    if (empty($prenom) || strlen($prenom) < 2) {
+        $erreurs[] = "Le prénom doit contenir au moins 2 caractères.";
     }
-
+    if (empty($nom) || strlen($nom) < 2) {
+        $erreurs[] = "Le nom doit contenir au moins 2 caractères.";
+    }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $erreurs[] = "L'adresse email n'est pas valide.";
     }
-
-    if (empty($motdepasse) || strlen($motdepasse) < 6) {
-        $erreurs[] = "Le mot de passe doit contenir au moins 6 caractères.";
+    if (strlen($mdp) < 8) {
+        $erreurs[] = "Le mot de passe doit contenir au moins 8 caractères.";
     }
-
-    if ($motdepasse !== $motdepasse_confirm) {
+    if ($mdp !== $mdpConfirm) {
         $erreurs[] = "Les mots de passe ne correspondent pas.";
     }
 
+    // Vérifier si l'email existe déjà
     if (empty($erreurs)) {
-            // Vérification de l'existence de l'email
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-            if ($stmt->fetch()) {
-                $erreurs[] = "Cette adresse email est déjà utilisée.";
-            } else {
-                // Insertion dans la base de données
-                $motdepasse_hash = password_hash($motdepasse, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (nom, email, motdepasse) VALUES (?, ?, ?)");
-                $stmt->execute([$nom, $email, $motdepasse_hash]);
-                $succes = true;
-            }
-        } else {
-            $erreurs[] = "Une erreur est survenue lors de l'inscription. Veuillez réessayer.";
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email");
+        $stmt->execute(['email' => $email]);
+        $response = $stmt->fetch(); // array
+        if ($response) {
+            $erreurs[] = "Cet email est déjà utilisé.";
         }
-    $succes = true;
     }
+
+    // Insertion en base
+    if (empty($erreurs)) {
+        $mdpHash = password_hash($mdp, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare(
+            "INSERT INTO users (prenom, nom, email, password) VALUES (:prenom, :nom, :email, :password)"
+        );
+        $stmt->execute([
+            'prenom' => $prenom,
+            'nom' => $nom,
+            'email' => $email,
+            'password' => $mdpHash
+        ]);
+        $succes = true;
+    }
+}
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription</title>
+    <title>Inscription - PixelBay</title>
     <style>
-        form {
-            margin: 20px;
-            padding: 20px;
-            border: 1px solid #ccc;
-            width: 300px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        input[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #45a049;
-        }
+        form { max-width: 400px; margin: 20px auto; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input { width: 100%; padding: 8px; margin-top: 4px; }
+        button { margin-top: 15px; padding: 10px 20px; }
+        .erreur { color: red; }
+        .succes { color: green; }
     </style>
 </head>
 <body>
+    <form action="" method="POST">
+        <h1>Inscription PixelBay</h1>
 
-    <?php if ($succes): ?>
-        <p>Inscription réussie ! Vous pouvez maintenant <a href="exo16-connexion.php">vous connecter</a>.</p>
-    <?php else: ?>
-        <?php if (!empty($erreurs)): ?>
-            <ul>
-                <?php foreach ($erreurs as $erreur): ?>
-                    <li><?= htmlspecialchars($erreur) ?></li>
-                <?php endforeach; ?>
-            </ul>
+        <?php if ($succes): ?>
+            <p class="succes">Compte créé avec succès !
+               <a href="exo16-connexion.php">Se connecter</a></p>
+        <?php else: ?>
+
+            <?php if (!empty($erreurs)): ?>
+                <ul class="erreur">
+                    <?php foreach ($erreurs as $erreur): ?>
+                        <li><?= $erreur ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <label for="prenom">Prénom :</label>
+            <input type="text" name="prenom" id="prenom"
+                   value="<?= htmlspecialchars($prenom ?? '') ?>" required>
+
+            <label for="nom">Nom :</label>
+            <input type="text" name="nom" id="nom"
+                   value="<?= htmlspecialchars($nom ?? '') ?>" required>
+
+            <label for="email">Email :</label>
+            <input type="email" name="email" id="email"
+                   value="<?= htmlspecialchars($email ?? '') ?>" required>
+
+            <label for="mdp">Mot de passe :</label>
+            <input type="password" name="mdp" id="mdp" required minlength="8">
+
+            <label for="mdp_confirm">Confirmer :</label>
+            <input type="password" name="mdp_confirm" id="mdp_confirm" required>
+
+            <button type="submit">Créer mon compte</button>
+            <p><a href="exo16-connexion.php">Déjà inscrit ? Se connecter</a></p>
         <?php endif; ?>
-
-    <h2>Inscription</h2>
-
-    <form action="inscription_traitement.php" method="post">
-        <label for="nom">Nom:</label>
-        <input type="text" id="nom" name="nom" 
-        value="<?= htmlspecialchars($nom ?? '') ?>" required><br><br>
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" 
-        value="<?= htmlspecialchars($email ?? '') ?>" required><br><br>
-
-        <label for="motdepasse">Mot de passe:</label>
-        <input type="password" id="motdepasse" name="motdepasse" required><br><br>
-        <value="<?= htmlspecialchars($motdepasse ?? '') ?>" required><br><br>
-
-        <label for="motdepasse_confirm">Confirmez le mot de passe:</label>
-        <input type="password" id="motdepasse_confirm" name="motdepasse_confirm" required><br><br>
-        <value="<?= htmlspecialchars($motdepasse_confirm ?? '') ?>" required><br><br>
-
-        <input type="submit" value="S'inscrire">
-        <p>Déjà un compte ? <a href="exo16-connexion.php">Connectez-vous</a>.</p>
-
     </form>
-
 </body>
 </html>

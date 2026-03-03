@@ -2,95 +2,63 @@
 session_start();
 require_once 'config.php';
 
+if (isset($_SESSION['user_id'])) {
+    header("Location: exo16-dashboard.php");
+    exit;
+}
+
+$erreur = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
-    $motdepasse = trim($_POST['motdepasse'] ?? '');
+    $mdp = $_POST['mdp'] ?? '';
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        die("L'adresse email n'est pas valide.");
-    }
-
-    if (empty($motdepasse)) {
-        die("Le mot de passe est requis.");
-    }
-
-    $stmt = $pdo->prepare("SELECT id, nom, motdepasse, role FROM users WHERE email = ?");
-    $stmt->execute([$email]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = :email");
+    $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($motdepasse, $user['motdepasse'])) {
+    if ($user && password_verify($mdp, $user['password'])) {
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['nom'];
+        $_SESSION['user_name'] = $user['prenom'] . ' ' . $user['nom'];
         $_SESSION['user_role'] = $user['role'];
         header("Location: exo16-dashboard.php");
         exit;
     } else {
-        die("Email ou mot de passe incorrect.");
+        $erreur = "Email ou mot de passe incorrect.";
     }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion</title>
+    <title>Connexion - PixelBay</title>
     <style>
-        form {
-            margin: 20px;
-            padding: 20px;
-            border: 1px solid #ccc;
-            width: 300px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        input[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #45a049;
-        }
-        .erreur {
-            color: red;
-            margin-bottom: 10px;
-        }
+        form { max-width: 400px; margin: 50px auto; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input { width: 100%; padding: 8px; margin-top: 4px; }
+        button { margin-top: 15px; padding: 10px 20px; }
+        .erreur { color: red; }
     </style>
 </head>
 <body>
+    <form action="" method="POST">
+        <h1>Connexion PixelBay</h1>
 
-    <h2>Connexion</h2>
+        <?php if (!empty($erreur)): ?>
+            <p class="erreur"><?= $erreur ?></p>
+        <?php endif; ?>
 
-    <?php if (!empty($erreurs)): ?>
-                <?php foreach ($erreurs as $erreur): ?>
-                    <p class="erreur"><?= htmlspecialchars($erreur) ?></p>
-                <?php endforeach; ?>
+        <label for="email">Email :</label>
+        <input type="email" name="email" id="email" required>
 
-    <form action="connexion_traitement.php" method="post">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
+        <label for="mdp">Mot de passe :</label>
+        <input type="password" name="mdp" id="mdp" required>
 
-        <label for="motdepasse">Mot de passe:</label>
-        <input type="password" id="motdepasse" name="motdepasse" required><br><br>
-
-        <input type="submit" value="Se connecter">
-        <p>Pas de compte ? <a href="exo16-inscription.php">Inscrivez-vous</a>.</p>
+        <button type="submit">Se connecter</button>
+        <p><a href="exo16-inscription.php">Pas encore de compte ? S'inscrire</a></p>
     </form>
-    
 </body>
 </html>
